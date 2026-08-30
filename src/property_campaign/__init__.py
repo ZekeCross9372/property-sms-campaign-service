@@ -1,0 +1,2 @@
+"""Property SMS campaign service."""
+
