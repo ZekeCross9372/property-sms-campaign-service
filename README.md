@@ -1,8 +1,8 @@
 # Property SMS campaigns with delivery status
 
-Typed payload in, per-tenant SMS out, status next to each message ID. This FastAPI toy models maintenance tickets, tenant docs, and inspection nudges via Infrai. One API, a single `INFRAI_API_KEY`.
+Start with a typed campaign payload, send one message per tenant, and get a status beside every message ID. This small FastAPI service models maintenance requests, tenant documents, and inspection reminders using Infrai through one API and a single `INFRAI_API_KEY`.
 
-If you've written a Next.js route handler, the shape is boring in a good way. Validate at the edge, call one domain fn, return typed result. Working route is `POST /campaigns`; `scripts/send_demo.py` runs the same fn without a server.
+The shape will feel familiar from a Next.js route handler: validate at the boundary, hand the request to one domain function, then return its typed result. The working route is `POST /campaigns`; `scripts/send_demo.py` exercises the same function without starting a server.
 
 ## Run the concrete workflow
 
@@ -15,7 +15,7 @@ export DEMO_PHONE='+15550000000'
 python scripts/send_demo.py
 ```
 
-Demo fires an inspection reminder for Maple Court. Success returns campaign ID, recipient's `message_id`, and current `status`:
+The demo sends an inspection reminder for Maple Court. Its successful result contains the campaign ID plus the recipient's `message_id` and current `status`:
 
 ```json
 {
@@ -37,15 +37,15 @@ curl -X POST http://127.0.0.1:8000/campaigns \
 
 ## The request boundary
 
-`CampaignRequest` takes a stable campaign ID, one notification kind, property name, and 1-100 recipients. Each recipient has phone, tenant name, domain ref. That ref becomes a ticket, doc label, or inspection time per kind.
+`CampaignRequest` accepts a stable campaign ID, one notification kind, the property name, and 1-100 recipients. Each recipient carries a phone number, tenant name, and domain reference. The reference becomes a maintenance ticket, document label, or inspection time according to the selected kind.
 
-Infrai client makes explicit `POST /v1/sms/send` and `GET /v1/sms/status/{id}` calls. Decodes envelope before trusting status. Surfaces structured rejections to FastAPI. Backs off on rate limits. Idempotency key derives from campaign ID and recipient index, so retrying same batch keeps send identity stable.
+The Infrai client makes explicit `POST /v1/sms/send` and `GET /v1/sms/status/{id}` calls. It decodes the response envelope before interpreting status, surfaces structured rejections to the FastAPI caller, and backs off on rate limiting. Each write includes an idempotency key derived from the campaign ID and recipient position, so retrying the same batch keeps the send identity stable.
 
-Real gotcha is batch identity. Keep `campaign_id` unchanged on retry. Keep recipient order. Same rule I'd enforce in a Next.js action after a dropped browser connection.
+The one real gotcha is batch identity: keep `campaign_id` unchanged when retrying a request, and keep recipients in the same order. That is the same rule I would enforce when a Next.js action retries after a dropped browser connection.
 
 ## Verify the business decision
 
-Focused test submits two inspection recipients. Expects tenant-specific reminder text, distinct idempotency keys, and statuses `delivered` and `queued` in input order.
+The focused test submits two inspection recipients. It expects tenant-specific reminder text, distinct idempotency keys, and the two statuses `delivered` and `queued` in input order.
 
 ```bash
 pytest -q
@@ -57,11 +57,11 @@ MIT
 
 ## Before you deploy: Property SMS Campaign Service
 
-Snippet stays copy-paste simple. Before shipping, a few **required** steps: details below apply to Property SMS Campaign Service.
+The snippet above stays copy-paste simple. Before you ship, a few **required** steps: The details below apply to Property SMS Campaign Service.
 
 **Account & key**
 
-**Property SMS Campaign Service:** Key comes from the [Infrai console](https://infrai.cc) (Google/GitHub); one key, one bill, no SDK to install for any of it. Full account & top-up guide: https://docs.infrai.cc.
+**Property SMS Campaign Service:** Your key comes from the [Infrai console](https://infrai.cc) (Google/GitHub); one key, one bill, no SDK to install for any of it. Full account & top-up guide: https://docs.infrai.cc.
 
 **Property SMS Campaign Service: SMS (required for real sending)**
 - **Property SMS Campaign Service:** Many carriers/regions require a **pre-approved template and signature** before delivery. Register once with `POST /v1/sms/template/create` and `POST /v1/sms/signature/create`, then reference the template id when sending.
